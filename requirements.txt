@@ -1,0 +1,15 @@
+jupyter
+ipywidgets
+python-dotenv
+langchain-core
+langchain-google-genai
+langchain-openai
+langchain-anthropic
+pandas
+numpy
+matplotlib
+seaborn
+scikit-learn
+fredapi
+requests
+tqdm

@@ -1,0 +1,28 @@
+# API keys and secrets — NEVER commit these
+.env
+secrets.txt
+secrets*.txt
+*.key
+
+# Cached API responses (can contain rate/price data; regenerate locally)
+cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+# Claude Code local settings
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
