@@ -6,10 +6,9 @@ langchain-google-genai
 langchain-openai
 langchain-anthropic
 pandas
+pyarrow
 numpy
 matplotlib
 seaborn
-scikit-learn
-fredapi
 requests
 tqdm
