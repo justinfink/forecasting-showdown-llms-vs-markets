@@ -1,22 +1,37 @@
-# Forecasting Showdown: Kalshi Weather Markets vs. Frontier LLMs
+# Forecasting Showdown: LLMs vs Kalshi Weather Prediction Markets
 
-Can frontier LLMs beat liquid prediction markets at forecasting daily high temperatures?
+Can frontier LLMs beat a liquid prediction market at forecasting daily high temperatures — at the **same information horizon**?
 
-This project evaluates three forecaster types against **8,000+ historical Kalshi binary weather markets** across six US cities, using Kalshi's own settlement records as ground truth.
+This project benchmarks three AI models against the **Kalshi T-1 market price** (the market's last pre-event consensus) across **1,500+ competitive binary weather markets** spanning six US cities, using Kalshi's own settlement records as ground truth.
 
 ---
 
 ## Experimental Design
 
-| Forecaster | Prompt date | Information available |
+| Forecaster | Snapshot | Information available |
 |---|---|---|
-| **AI @ T-7** | event_date − 7 days | Historical climatology only (no real-time data) |
-| **AI @ T-1** | event_date − 1 day | Recent daily highs via Open-Meteo (`get_recent_weather` tool) |
-| **Kalshi Market** | Final settlement price | Live crowd wisdom across all participants |
+| **GPT-4o** | T-1 (eve of event) | 10-day historical highs from Open-Meteo ERA5 archive |
+| **Gemini 1.5 Flash** | T-1 | Same |
+| **Claude 3.5 Sonnet** | T-1 | Same |
+| **Kalshi T-1** | T-1 (last pre-midnight candle) | Live prediction market price |
+| **Baseline: Always-50%** | — | None |
+| **Baseline: City-Month Rate** | — | Historical YES rate for that city × month |
 
-**Models tested**: GPT-4o, Gemini 2.5 Flash, Claude Sonnet 4.6
+**Why T-1 for Kalshi?**  Kalshi weather markets close ~29 hours *after* the event date midnight, by which point the NWS official temperature is public knowledge.  The final `last_price` is not a pre-event forecast.  We use the **Kalshi T-1 price** — the last hourly candlestick that closed at or before event_date midnight UTC — fetched from Kalshi's historical candlestick API (`/series/{series}/markets/{ticker}/candlesticks`).  This gives both AI and market the same ~T-1 information horizon.
 
-**Ground truth**: Kalshi's `expiration_value` field — the exact NWS-recorded temperature used to settle each contract.
+**Competitive markets only:**  ~94% of settled markets have `last_price` near 0 or 1 (trivially certain outcomes).  We restrict to markets where `last_price ∈ [0.10, 0.90]` — cases where the outcome was genuinely uncertain.
+
+**Models chosen for knowledge-cutoff analysis:**
+
+| Model | Knowledge Cutoff | Provider |
+|---|---|---|
+| GPT-4o | October 2023 | OpenAI |
+| Gemini 1.5 Flash | November 2023 | Google |
+| Claude 3.5 Sonnet (20241022) | April 2024 | Anthropic |
+
+All three cutoffs fall within the Kalshi data window (Aug 2021 – present), providing substantial data both before and after each cutoff.
+
+**Ground truth**: Kalshi's `expiration_value` — the exact NWS-recorded temperature used to settle each contract.
 
 **Metric**: Brier Score `BS = (1/N) Σ(pᵢ − oᵢ)²`
 (0 = perfect · 0.25 = always-50% baseline · 1 = maximally wrong)
@@ -27,17 +42,17 @@ This project evaluates three forecaster types against **8,000+ historical Kalshi
 
 **Cities**: New York City, Chicago, Miami, Los Angeles, Denver, Seattle
 
-**Markets**: All settled Kalshi daily high-temperature contracts (series `KXHIGHNY`, `KXHIGHCHI`, `KXHIGHMIA`, `KXHIGHLAX`, `KXHIGHDEN`, `KXHIGHTSEA`) — 8,000+ markets dating back to August 2021.
+**Markets**: All settled Kalshi daily high-temperature contracts (series `KXHIGHNY`, `KXHIGHCHI`, `KXHIGHMIA`, `KXHIGHLAX`, `KXHIGHDEN`, `KXHIGHTSEA`) — 28,000+ markets, ~1,600 competitive.
 
-**Train / Validate / Test split** (chronological by event date):
+**Knowledge-cutoff periods** (no train/test split — all markets used, with period labels):
 
-| Split | Date range | Purpose |
-|---|---|---|
-| Train | before 2024-01-01 | Historical baseline |
-| Validate | 2024-01-01 – 2025-08-31 | Within most LLM training windows |
-| Test | 2025-09-01 onward | Post most LLM training cutoffs |
+| Period | Definition |
+|---|---|
+| `pre_all` | Before Oct 2023 — all models in training window |
+| `transition` | Oct 2023 – Apr 2024 — models progressively reach cutoff |
+| `post_all` | After Apr 2024 — all models past their training cutoff |
 
-**Sample for AI evaluation**: 50 markets per split (highest-volume per city × calendar month) = **150 markets** × 3 models × 2 snapshots = ~900 AI calls, all cached after first run.
+**LLM sample**: Up to 150 competitive markets per city = ~900 markets × 3 models = ~2,700 AI calls, all cached after first run.
 
 ---
 
@@ -81,7 +96,7 @@ ANTHROPIC_API_KEY=your_key_here
 | `GOOGLE_API_KEY` | [aistudio.google.com](https://aistudio.google.com) | Free tier available |
 | `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) | Paid |
 
-> **Open-Meteo** (recent weather data for T-1 tool calls) requires no API key.
+> **Open-Meteo** (historical weather for prompt context) requires no API key.
 
 ### 3. Run the notebook
 
@@ -89,7 +104,7 @@ ANTHROPIC_API_KEY=your_key_here
 jupyter notebook lab.ipynb
 ```
 
-Run cells top-to-bottom. All Kalshi market data and LLM responses are cached in `cache/` — subsequent runs are instant and free.
+Run cells top-to-bottom. All market data, Kalshi T-1 prices, and LLM responses are cached in `cache/` — subsequent runs are instant and free.
 
 ---
 
@@ -97,28 +112,32 @@ Run cells top-to-bottom. All Kalshi market data and LLM responses are cached in 
 
 ```
 final_project/
-├── lab.ipynb          # Main notebook — all code and analysis
-├── requirements.txt   # Python dependencies
-├── .env               # API keys (gitignored — create manually)
+├── lab.ipynb                    # Main notebook — all code and analysis
+├── requirements.txt             # Python dependencies
+├── .env                         # API keys (gitignored — create manually)
 ├── .gitignore
-└── cache/             # Auto-created on first run
-    ├── markets.parquet    # All settled Kalshi markets (~50k rows)
-    ├── response_cache.json  # LLM response cache (JSON, keyed by SHA-256)
-    ├── results.parquet    # Master results DataFrame
-    ├── results.csv        # Same, as CSV for easy inspection
-    └── results_plots.png  # Generated charts
+└── cache/                       # Auto-created on first run
+    ├── markets.parquet          # All settled Kalshi markets (~28k rows)
+    ├── weather.parquet          # Open-Meteo ERA5 daily highs per city
+    ├── kalshi_t1_prices.parquet # Pre-event candlestick prices (T-1)
+    ├── response_cache.json      # LLM response cache (keyed by SHA-256)
+    ├── results.parquet          # Master results DataFrame
+    ├── results.csv              # Same, as CSV for easy inspection
+    └── results_plots.png        # Generated charts
 ```
 
 ## Notebook Sections
 
 | Section | Description |
 |---|---|
-| **1 — Market Data** | Fetch all settled Kalshi markets, descriptive stats, Kalshi's own Brier score |
-| **2 — Sample Selection** | Stratified sample: highest-volume market per city × month per split |
-| **3 — LLM Forecasting** | T-7 vanilla and T-1 tool-augmented forecasts across all three models |
-| **4 — Brier Score Analysis** | Overall, by split, by city, generalisation gap (validate → test) |
-| **5 — Visualisations** | Brier by model × snapshot, generalisation gap, AI vs market scatter, calibration curves |
-| **6 — Summary** | Final leaderboard, best forecaster per city |
+| **1 — Market Data** | Fetch all settled Kalshi markets; confirm last_price is post-outcome |
+| **2 — Sample Selection** | Competitive filter + cutoff-period labels; cap per city |
+| **3 — Kalshi T-1 Prices** | Fetch genuine pre-event prices via candlestick API |
+| **4 — LLM Forecasting** | T-1 forecasts with ERA5 weather context, all three models |
+| **5 — Assemble Results** | Merge AI + Kalshi T-1 + baselines into single DataFrame |
+| **6 — Brier Analysis** | Overall, AI vs market, by city, pre/post cutoff, temporal cohorts |
+| **7 — Visualisations** | Brier bars, pre/post cutoff, cohort trends, calibration curves |
+| **8 — Summary** | Final leaderboard, AI vs market verdict, cutoff-effect table |
 
 ---
 
@@ -132,4 +151,4 @@ results_df = pd.read_parquet("cache/results.parquet")
 # or: pd.read_csv("cache/results.csv")
 ```
 
-Key columns: `ticker`, `city`, `event_date`, `threshold_f`, `direction`, `actual_temp_f`, `kalshi_prob`, `outcome`, `result`, `snapshot`, `model`, `method`, `probability`, `brier`, `split`
+Key columns: `ticker`, `city`, `event_date`, `direction`, `threshold_f`, `actual_temp_f`, `kalshi_prob`, `outcome`, `cutoff_period`, `model`, `model_key`, `probability`, `brier`, `post_cutoff`
