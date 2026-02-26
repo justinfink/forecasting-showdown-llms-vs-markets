@@ -11,7 +11,7 @@ This project benchmarks three AI models against the **Kalshi T-1 market price** 
 | Forecaster | Snapshot | Information available |
 |---|---|---|
 | **GPT-4o** | T-1 (eve of event) | 10-day historical highs from Open-Meteo ERA5 archive |
-| **Gemini 1.5 Flash** | T-1 | Same |
+| **Gemini 2.0 Flash** | T-1 | Same |
 | **Claude 3.5 Sonnet** | T-1 | Same |
 | **Kalshi T-1** | T-1 (last pre-midnight candle) | Live prediction market price |
 | **Baseline: Always-50%** | — | None |
@@ -26,8 +26,8 @@ This project benchmarks three AI models against the **Kalshi T-1 market price** 
 | Model | Knowledge Cutoff | Provider |
 |---|---|---|
 | GPT-4o | October 2023 | OpenAI |
-| Gemini 1.5 Flash | November 2023 | Google |
 | Claude 3.5 Sonnet (20241022) | April 2024 | Anthropic |
+| Gemini 2.0 Flash | August 2024 | Google |
 
 All three cutoffs fall within the Kalshi data window (Aug 2021 – present), providing substantial data both before and after each cutoff.
 
@@ -49,8 +49,8 @@ All three cutoffs fall within the Kalshi data window (Aug 2021 – present), pro
 | Period | Definition |
 |---|---|
 | `pre_all` | Before Oct 2023 — all models in training window |
-| `transition` | Oct 2023 – Apr 2024 — models progressively reach cutoff |
-| `post_all` | After Apr 2024 — all models past their training cutoff |
+| `transition` | Oct 2023 – Aug 2024 — models progressively reach cutoff |
+| `post_all` | After Aug 2024 — all models past their training cutoff |
 
 **LLM sample**: Up to 150 competitive markets per city = ~900 markets × 3 models = ~2,700 AI calls, all cached after first run.
 
