@@ -12,3 +12,7 @@ matplotlib
 seaborn
 requests
 tqdm
+# Native SDKs used by lab.ipynb and frontier_models.py
+openai
+anthropic
+google-generativeai
